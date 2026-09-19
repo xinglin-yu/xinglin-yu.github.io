@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>余兴林 · 让机器听懂人话的工程师</title>
+<meta name="description" content="余兴林 — 全栈 / AI Agent 工程师。前微软 Copilot，HiTalker 创始人，现在在教人形机器人跑步。" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+SC:wght@400;500;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+/* ══════════════════════════════════════════════════════════════
+   RESET & TOKENS
+══════════════════════════════════════════════════════════════ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-0: #05070f;
+  --bg-1: #0a0f1e;
+  --ink: #eef2ff;
+  --ink-dim: rgba(238, 242, 255, 0.64);
+  --ink-faint: rgba(238, 242, 255, 0.38);
+  --glass: rgba(255, 255, 255, 0.055);
+  --glass-strong: rgba(255, 255, 255, 0.09);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --cyan: #22d3ee;
+  --violet: #a78bfa;
+  --pink: #f472b6;
+  --emerald: #34d399;
+  --amber: #fbbf24;
+  --blue: #60a5fa;
+  --grad-main: linear-gradient(135deg, #22d3ee 0%, #a78bfa 50%, #f472b6 100%);
+  --radius: 22px;
+  --ease-spring: cubic-bezier(.22,1,.36,1);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-0);
+  color: var(--ink);
+  overflow-x: hidden;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: rgba(167, 139, 250, 0.4); }
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: var(--bg-0); }
+::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #22d3ee, #a78bfa); border-radius: 8px; }
+
+/* ══════════════════════════════════════════════════════════════
+   BACKGROUND LAYERS
+══════════════════════════════════════════════════════════════ */
+.bg-stage { position: fixed; inset: 0; z-index: -3; background: var(--bg-0); overflow: hidden; }
+.aurora { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.55; will-change: transform; mix-blend-mode: screen; }
+.aurora.a1 { width: 55vw; height: 55vw; left: -12vw; top: -18vh; background: radial-gradient(circle at 30% 30%, #0ea5e9, transparent 65%); animation: drift1 26s ease-in-out infinite alternate; }
+.aurora.a2 { width: 48vw; height: 48vw; right: -14vw; top: -6vh; background: radial-gradient(circle at 60% 40%, #8b5cf6, transparent 65%); animation: drift2 32s ease-in-out infinite alternate; }
+.aurora.a3 { width: 42vw; height: 42vw; left: 22vw; bottom: -20vh; background: radial-gradient(circle at 50% 50%, #ec4899, transparent 65%); animation: drift3 29s ease-in-out infinite alternate; opacity: 0.4; }
+.aurora.a4 { width: 34vw; height: 34vw; right: 6vw; bottom: -10vh; background: radial-gradient(circle at 50% 50%, #10b981, transparent 65%); animation: drift1 36s ease-in-out infinite alternate-reverse; opacity: 0.35; }
+@keyframes drift1 { from { transform: translate(0,0) scale(1); } to { transform: translate(9vw, 12vh) scale(1.18); } }
+@keyframes drift2 { from { transform: translate(0,0) scale(1.1); } to { transform: translate(-10vw, 14vh) scale(0.92); } }
+@keyframes drift3 { from { transform: translate(0,0) rotate(0deg); } to { transform: translate(8vw, -12vh) rotate(40deg); } }
+
+.bg-grid {
+  position: fixed; inset: 0; z-index: -2; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 20%, black 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 20%, black 30%, transparent 75%);
+}
+#stars { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+.bg-noise {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+}
+
+/* scroll progress */
+#scrollBar { position: fixed; top: 0; left: 0; height: 3px; width: 0; z-index: 200; background: var(--grad-main); box-shadow: 0 0 12px rgba(139,92,246,0.7); transition: width .1s linear; }
+
+/* ══════════════════════════════════════════════════════════════
+   CURSOR
+══════════════════════════════════════════════════════════════ */
+.cursor-dot, .cursor-ring { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 9999; border-radius: 50%; transform: translate(-50%, -50%); }
+.cursor-dot { width: 7px; height: 7px; background: var(--cyan); box-shadow: 0 0 12px var(--cyan); }
+.cursor-ring { width: 36px; height: 36px; border: 1.5px solid rgba(167, 139, 250, 0.6); transition: width .3s var(--ease-spring), height .3s var(--ease-spring), border-color .3s, background .3s; }
+.cursor-ring.hovering { width: 58px; height: 58px; border-color: var(--cyan); background: rgba(34, 211, 238, 0.08); }
+@media (hover: none) { .cursor-dot, .cursor-ring { display: none; } }
+
+/* ══════════════════════════════════════════════════════════════
+   GLASS
+══════════════════════════════════════════════════════════════ */
+.glass {
+  position: relative;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+.glass::before {
+  content: ""; position: absolute; top: 0; left: 8%; right: 8%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+}
+.glow-card { transition: transform .5s var(--ease-spring), border-color .4s; transform-style: preserve-3d; }
+.glow-card .card-glow {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .45s;
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(167,139,250,0.16), rgba(34,211,238,0.07) 40%, transparent 65%);
+}
+.glow-card:hover .card-glow { opacity: 1; }
+.glow-card:hover { border-color: rgba(255, 255, 255, 0.26); }
+
+/* ══════════════════════════════════════════════════════════════
+   NAV
+══════════════════════════════════════════════════════════════ */
+nav {
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+  z-index: 100; display: flex; align-items: center; gap: 4px;
+  padding: 8px 10px; border-radius: 999px;
+  background: rgba(10, 15, 30, 0.45);
+  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.45);
+  transition: top .4s var(--ease-spring), background .4s, box-shadow .4s;
+  max-width: calc(100vw - 24px);
+}
+nav.scrolled { top: 10px; background: rgba(8, 12, 24, 0.72); box-shadow: 0 14px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(167,139,250,0.12); }
+nav .logo { font-weight: 800; font-size: 15px; padding: 6px 14px; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+nav .logo .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--grad-main); background-size: 200% 200%; animation: hueShift 4s linear infinite; box-shadow: 0 0 10px rgba(167,139,250,0.8); }
+@keyframes hueShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+nav a.nav-link {
+  position: relative; color: var(--ink-dim); text-decoration: none;
+  font-size: 13.5px; font-weight: 500; padding: 8px 14px; border-radius: 999px;
+  transition: color .3s, background .3s; white-space: nowrap;
+}
+nav a.nav-link:hover { color: var(--ink); background: rgba(255,255,255,0.07); }
+nav a.nav-link.active { color: #fff; background: rgba(255,255,255,0.1); }
+.lang-btn {
+  margin-left: 4px; padding: 7px 13px; border-radius: 999px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.06);
+  color: var(--ink); font-size: 12.5px; font-weight: 700; font-family: inherit; transition: all .3s;
+}
+.lang-btn:hover { background: rgba(255,255,255,0.14); border-color: rgba(167,139,250,0.5); box-shadow: 0 0 18px rgba(167,139,250,0.25); }
+
+/* ══════════════════════════════════════════════════════════════
+   LAYOUT
+══════════════════════════════════════════════════════════════ */
+.container { width: min(1150px, calc(100% - 40px)); margin: 0 auto; position: relative; z-index: 1; }
+section { padding: 90px 0; position: relative; }
+
+.sec-head { display: flex; align-items: baseline; gap: 18px; margin-bottom: 44px; }
+.sec-head .num { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--cyan); }
+.sec-head h2 {
+  font-size: clamp(26px, 4vw, 38px); font-weight: 900; letter-spacing: -0.01em;
+  background: linear-gradient(90deg, #fff 30%, #a5b4fc 55%, #67e8f9 80%);
+  background-size: 200% auto; -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; animation: shimmerText 6s linear infinite;
+}
+@keyframes shimmerText { to { background-position: 200% center; } }
+.sec-head .sub { font-size: 13.5px; color: var(--ink-faint); margin-left: auto; }
+@media (max-width: 700px) { .sec-head .sub { display: none; } }
+
+.reveal { opacity: 0; transform: translateY(42px); transition: opacity .9s var(--ease-spring), transform .9s var(--ease-spring); }
+.reveal.in { opacity: 1; transform: translateY(0); }
+.reveal[data-delay="1"] { transition-delay: .1s; } .reveal[data-delay="2"] { transition-delay: .2s; }
+.reveal[data-delay="3"] { transition-delay: .3s; } .reveal[data-delay="4"] { transition-delay: .4s; }
+
+/* ══════════════════════════════════════════════════════════════
+   HERO
+══════════════════════════════════════════════════════════════ */
+#hero { min-height: 100vh; display: flex; align-items: center; padding: 130px 0 80px; }
+.hero-wrap { display: grid; grid-template-columns: 1.3fr 0.7fr; gap: 56px; align-items: center; }
+@media (max-width: 900px) { .hero-wrap { grid-template-columns: 1fr; gap: 44px; } .hero-visual { order: -1; } }
+
+.hero-greet { font-size: 15px; font-weight: 600; color: var(--cyan); letter-spacing: 0.08em; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+.hero-greet::before { content: ""; width: 34px; height: 1.5px; background: linear-gradient(90deg, var(--cyan), transparent); }
+
+.hero-name { font-size: clamp(46px, 8vw, 92px); font-weight: 900; line-height: 1.05; letter-spacing: -0.035em; margin-bottom: 4px; }
+.hero-name .grad { background: var(--grad-main); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: shimmerText 7s linear infinite; }
+.hero-en { font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.4em; color: var(--ink-faint); text-transform: uppercase; margin-bottom: 24px; }
+
+.hero-manifesto { font-size: clamp(17px, 2.2vw, 21px); font-weight: 600; color: var(--ink-dim); max-width: 560px; margin-bottom: 8px; }
+.hero-manifesto em {
+  font-style: normal; position: relative; white-space: nowrap;
+  background: var(--grad-main); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: shimmerText 7s linear infinite;
+}
+
+.typewriter-row { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; color: var(--ink-faint); min-height: 30px; margin: 18px 0 30px; font-family: 'JetBrains Mono', monospace; }
+.typewriter-row .arrow { color: var(--cyan); }
+#type-target { color: #a5f3fc; }
+.caret { display: inline-block; width: 2.5px; height: 1.2em; background: var(--cyan); margin-left: 3px; vertical-align: text-bottom; animation: caretBlink 0.9s steps(1) infinite; box-shadow: 0 0 8px var(--cyan); }
+@keyframes caretBlink { 50% { opacity: 0; } }
+
+.btn-row { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 40px; }
+.btn {
+  position: relative; display: inline-flex; align-items: center; gap: 9px;
+  padding: 13px 26px; border-radius: 999px; font-size: 14.5px; font-weight: 700;
+  text-decoration: none; cursor: pointer; border: 1px solid transparent;
+  transition: transform .3s var(--ease-spring), box-shadow .3s, background .3s, border-color .3s;
+  font-family: inherit; overflow: hidden;
+}
+.btn-primary { background: var(--grad-main); background-size: 200% auto; color: #08070f; box-shadow: 0 10px 34px rgba(139, 92, 246, 0.4); }
+.btn-primary:hover { background-position: right center; box-shadow: 0 14px 44px rgba(139, 92, 246, 0.6); }
+.btn-ghost { background: var(--glass); border-color: var(--glass-border); color: var(--ink); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.btn-ghost:hover { background: var(--glass-strong); border-color: rgba(167,139,250,0.45); box-shadow: 0 0 26px rgba(167,139,250,0.18); }
+.btn svg { width: 17px; height: 17px; }
+
+.hero-visual { display: flex; justify-content: center; will-change: transform; }
+.avatar-orbit { position: relative; width: 250px; height: 250px; display: grid; place-items: center; }
+@media (max-width: 900px) { .avatar-orbit { width: 190px; height: 190px; } }
+.avatar-ring { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, #22d3ee, #a78bfa, #f472b6, #34d399, #22d3ee); animation: spin 9s linear infinite; }
+.avatar-ring::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--bg-1); }
+@keyframes spin { to { transform: rotate(360deg); } }
+.avatar-orbit img {
+  position: relative; z-index: 2; width: 200px; height: 200px; border-radius: 50%;
+  object-fit: cover; object-position: 50% 15%;
+  border: 5px solid rgba(255,255,255,0.12); box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+  animation: floaty 5.5s ease-in-out infinite;
+}
+@media (max-width: 900px) { .avatar-orbit img { width: 150px; height: 150px; } }
+@keyframes floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-13px); } }
+.orbit-chip {
+  position: absolute; z-index: 3; padding: 8px 15px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 700; white-space: nowrap;
+  background: rgba(10, 15, 30, 0.55); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4); animation: floaty 5.5s ease-in-out infinite;
+}
+.orbit-chip.c1 { top: -4px; right: -34px; animation-delay: -1.2s; color: #a5f3fc; border-color: rgba(34,211,238,0.4); }
+.orbit-chip.c2 { bottom: 26px; left: -50px; animation-delay: -2.6s; color: #ddd6fe; border-color: rgba(167,139,250,0.4); }
+.orbit-chip.c3 { bottom: -14px; right: -10px; animation-delay: -3.8s; color: #fbcfe8; border-color: rgba(244,114,182,0.4); }
+
+.scroll-hint {
+  position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  color: var(--ink-faint); font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase;
+}
+.mouse { width: 22px; height: 34px; border: 1.5px solid rgba(255,255,255,0.35); border-radius: 12px; position: relative; }
+.mouse::after { content: ""; position: absolute; left: 50%; top: 6px; width: 3px; height: 7px; margin-left: -1.5px; border-radius: 3px; background: var(--cyan); animation: wheel 1.7s ease-in-out infinite; }
+@keyframes wheel { 0% { transform: translateY(0); opacity: 1; } 70% { transform: translateY(12px); opacity: 0; } 100% { opacity: 0; } }
+
+/* ══════════════════════════════════════════════════════════════
+   MANIFESTO MARQUEE (big strip)
+══════════════════════════════════════════════════════════════ */
+.manifesto-strip {
+  position: relative; z-index: 1; padding: 34px 0; overflow: hidden;
+  border-top: 1px solid rgba(255,255,255,0.07); border-bottom: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.02); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.big-marquee { display: flex; width: max-content; animation: marquee 30s linear infinite; }
+.manifesto-strip:hover .big-marquee { animation-play-state: paused; }
+@keyframes marquee { to { transform: translateX(-50%); } }
+.big-marquee span {
+  font-size: clamp(30px, 5vw, 56px); font-weight: 900; letter-spacing: -0.02em;
+  white-space: nowrap; padding: 0 28px;
+  -webkit-text-stroke: 1px rgba(255,255,255,0.22); color: transparent;
+  transition: all .4s;
+}
+.big-marquee span.solid { color: var(--ink); -webkit-text-stroke: 0; }
+.big-marquee span:hover { color: var(--cyan); -webkit-text-stroke: 0; text-shadow: 0 0 30px rgba(34,211,238,0.4); }
+
+/* ══════════════════════════════════════════════════════════════
+   BENTO GRID — 关于
+══════════════════════════════════════════════════════════════ */
+.bento { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 150px; gap: 16px; }
+@media (max-width: 900px) { .bento { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 165px; } }
+@media (max-width: 560px) { .bento { grid-template-columns: 1fr; grid-auto-rows: auto; } .bento .b-tile { min-height: 130px; } }
+
+.b-tile { padding: 24px; display: flex; flex-direction: column; transition: transform .5s var(--ease-spring); position: relative; }
+.b-tile:hover { transform: scale(1.016); z-index: 2; }
+
+.tile-now { grid-column: span 2; grid-row: span 2; }
+.tile-stats { grid-column: span 2; }
+.tile-where { grid-column: span 1; }
+.tile-clock { grid-column: span 1; }
+.tile-edu { grid-column: span 2; grid-row: span 2; }
+.tile-edu .edu-lines { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.tile-awards { grid-column: span 2; grid-row: span 2; }
+@media (max-width: 560px) { .tile-now, .tile-stats, .tile-where, .tile-clock, .tile-edu, .tile-awards { grid-column: span 1; } }
+
+.b-label { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 14px; }
+.b-label .bdot { width: 7px; height: 7px; border-radius: 50%; }
+
+.now-list { display: flex; flex-direction: column; gap: 14px; flex: 1; justify-content: center; }
+.now-item { display: flex; gap: 13px; align-items: flex-start; font-size: 14.5px; color: var(--ink-dim); }
+.now-item .ico { font-size: 18px; line-height: 1.4; }
+.now-item b { color: var(--ink); font-weight: 700; }
+.now-item .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--emerald); margin-top: 7px; flex-shrink: 0; position: relative; }
+.now-item .pulse-dot::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 1px solid var(--emerald); animation: pulseRing 1.8s ease-out infinite; }
+@keyframes pulseRing { from { transform: scale(0.5); opacity: 1; } to { transform: scale(1.7); opacity: 0; } }
+
+.tile-stats .row { display: flex; gap: 8px; flex: 1; align-items: center; justify-content: space-around; flex-wrap: wrap; }
+.stat { text-align: center; min-width: 72px; }
+.stat .val { font-size: clamp(24px, 3vw, 32px); font-weight: 900; background: var(--grad-main); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: shimmerText 8s linear infinite; font-family: 'JetBrains Mono', monospace; }
+.stat .lbl { font-size: 11.5px; color: var(--ink-faint); margin-top: 2px; }
+
+.where-city { font-size: 26px; font-weight: 900; }
+.where-meta { font-size: 12px; color: var(--ink-faint); margin-top: auto; font-family: 'JetBrains Mono', monospace; }
+#liveClock { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 700; color: #a5f3fc; letter-spacing: 0.02em; }
+.clock-meta { font-size: 12px; color: var(--ink-faint); margin-top: auto; }
+
+.edu-line { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 7px 0; font-size: 13.5px; }
+.edu-line + .edu-line { border-top: 1px dashed rgba(255,255,255,0.08); }
+.edu-line .s { font-weight: 700; }
+.edu-line .d { color: var(--ink-faint); font-size: 12px; }
+.edu-line .y { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--ink-faint); }
+
+.award-line { display: flex; gap: 12px; align-items: center; padding: 9px 0; font-size: 13.5px; }
+.award-line + .award-line { border-top: 1px dashed rgba(255,255,255,0.08); }
+.award-line .yr { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #fde68a; font-weight: 700; min-width: 42px; }
+.award-line.cert { cursor: zoom-in; transition: background .3s; border-radius: 10px; margin: 0 -8px; padding-left: 8px; padding-right: 8px; }
+.award-line.cert:hover { background: rgba(251,191,36,0.07); }
+.cert-badge {
+  margin-left: auto; flex-shrink: 0; font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+  color: #fde68a; border: 1px solid rgba(251,191,36,0.35); background: rgba(251,191,36,0.08);
+  padding: 3px 9px; border-radius: 99px; opacity: 0; transition: opacity .3s; white-space: nowrap;
+}
+.award-line.cert:hover .cert-badge { opacity: 1; }
+
+/* photo tiles */
+.tile-photo { grid-column: span 2; grid-row: span 2; padding: 0; cursor: zoom-in; }
+.tile-photo img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  transition: transform .9s var(--ease-spring); z-index: 0;
+}
+.tile-photo:hover img { transform: scale(1.07); }
+.tile-photo::before {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 55%; z-index: 1;
+  background: linear-gradient(180deg, transparent, rgba(3, 6, 14, 0.78));
+}
+.tile-photo .card-glow { z-index: 2; }
+.ph-cap { position: absolute; left: 14px; right: 14px; bottom: 12px; z-index: 3; display: flex; align-items: center; gap: 8px; }
+.ph-cap .cap-chip {
+  display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 700; color: var(--ink);
+  background: rgba(5, 9, 18, 0.55); border: 1px solid rgba(255,255,255,0.16);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.ph-cap .zoom-ico { width: 13px; height: 13px; color: #a5f3fc; }
+
+/* lightbox */
+#lightbox {
+  position: fixed; inset: 0; z-index: 400; display: none; place-items: center;
+  background: rgba(3, 5, 12, 0.85);
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  cursor: zoom-out; padding: 30px;
+}
+#lightbox.show { display: grid; }
+#lightbox img {
+  max-width: min(92vw, 860px); max-height: 84vh; border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.2);
+  box-shadow: 0 40px 120px rgba(0,0,0,0.7), 0 0 60px rgba(139,92,246,0.15);
+  animation: lbIn .4s var(--ease-spring);
+}
+@keyframes lbIn { from { opacity: 0; transform: scale(0.92) translateY(14px); } }
+#lightbox .lb-cap {
+  position: absolute; bottom: 34px; left: 50%; transform: translateX(-50%);
+  font-size: 13px; font-weight: 600; color: var(--ink-dim);
+  padding: 8px 18px; border-radius: 999px;
+  background: rgba(10, 15, 30, 0.6); border: 1px solid rgba(255,255,255,0.14);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   JOURNEY — 章节
+══════════════════════════════════════════════════════════════ */
+.chapters { display: flex; flex-direction: column; gap: 26px; }
+.chapter { padding: 34px 36px; display: grid; grid-template-columns: 110px 1fr; gap: 30px; }
+@media (max-width: 720px) { .chapter { grid-template-columns: 1fr; gap: 14px; padding: 26px 24px; } }
+
+.ch-ghost {
+  font-family: 'JetBrains Mono', monospace; font-size: 66px; font-weight: 700; line-height: 1;
+  -webkit-text-stroke: 1px rgba(255,255,255,0.16); color: transparent;
+  transition: all .5s var(--ease-spring); position: relative;
+}
+.chapter:hover .ch-ghost { -webkit-text-stroke: 1px rgba(34,211,238,0.65); text-shadow: 0 0 34px rgba(34,211,238,0.25); transform: translateY(-4px); }
+.ch-year { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-faint); margin-top: 10px; }
+.ch-year b { color: var(--cyan); font-weight: 700; }
+
+.ch-body h3 { font-size: 21px; font-weight: 800; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ch-body .ch-role { font-size: 13px; color: #93c5fd; font-weight: 600; margin-top: 3px; }
+.ch-story { margin-top: 12px; font-size: 15px; color: var(--ink-dim); max-width: 720px; }
+.ch-story strong { color: #fff; font-weight: 700; }
+.ch-facts { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 16px; }
+.fact {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700;
+  padding: 6px 13px; border-radius: 10px; color: #a5f3fc;
+  background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.25);
+}
+.fact.v { color: #ddd6fe; background: rgba(167,139,250,0.08); border-color: rgba(167,139,250,0.25); }
+.fact.g { color: #a7f3d0; background: rgba(52,211,153,0.08); border-color: rgba(52,211,153,0.25); }
+.fact.y { color: #fde68a; background: rgba(251,191,36,0.08); border-color: rgba(251,191,36,0.28); }
+.fact.p { color: #fbcfe8; background: rgba(244,114,182,0.08); border-color: rgba(244,114,182,0.28); }
+
+/* ══════════════════════════════════════════════════════════════
+   WORKS — 作品
+══════════════════════════════════════════════════════════════ */
+.works-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+@media (max-width: 980px) { .works-grid { grid-template-columns: 1fr; } }
+.work-card { padding: 0; display: flex; flex-direction: column; }
+.work-media {
+  height: 190px; position: relative; overflow: hidden;
+  display: grid; place-items: center;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  background: var(--cover, linear-gradient(135deg, rgba(34,211,238,0.12), rgba(167,139,250,0.1)));
+}
+.work-media::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(34,211,238,0.10), rgba(167,139,250,0.08));
+}
+.work-media video {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; z-index: 2; display: none; cursor: pointer;
+  background: #000;
+}
+.work-media.has-video video { display: block; }
+.work-media.has-video .w-emoji, .work-media.has-video .ph-frame, .work-media.has-video::after { display: none; }
+.work-media .w-emoji { position: relative; z-index: 1; transition: transform .6s var(--ease-spring); filter: drop-shadow(0 6px 18px rgba(0,0,0,0.4)); }
+.work-card:hover .w-emoji { transform: scale(1.22) rotate(-6deg); }
+.ph-frame {
+  position: absolute; z-index: 1; inset: 13px;
+  border: 1.5px dashed rgba(255,255,255,0.22); border-radius: 14px;
+  display: flex; flex-direction: column; gap: 7px; align-items: center; justify-content: center;
+  background: rgba(5, 9, 18, 0.3); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  text-align: center; padding: 10px; transition: all .35s;
+}
+.ph-frame svg { width: 32px; height: 32px; color: rgba(255,255,255,0.55); transition: all .35s; }
+.ph-frame .ph-label { font-size: 12px; font-weight: 700; color: var(--ink-dim); letter-spacing: 0.06em; }
+.ph-frame code {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-faint);
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px; padding: 3px 8px; word-break: break-all;
+}
+.work-media:hover .ph-frame { border-color: rgba(34,211,238,0.55); }
+.work-media:hover .ph-frame svg { color: var(--cyan); filter: drop-shadow(0 0 12px rgba(34,211,238,0.6)); }
+.work-media:hover .ph-frame .ph-label { color: #a5f3fc; }
+.video-badge {
+  position: absolute; z-index: 3; bottom: 10px; right: 10px;
+  font-family: 'JetBrains Mono', monospace; font-size: 10.5px; padding: 4px 11px; border-radius: 99px;
+  background: rgba(5, 9, 18, 0.7); border: 1px solid rgba(34,211,238,0.4);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  color: #a5f3fc; opacity: 0; transition: opacity .3s; pointer-events: none;
+}
+.work-media.has-video:hover .video-badge { opacity: 1; }
+.work-body { padding: 24px 26px 28px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.work-title { font-size: 19px; font-weight: 800; }
+.work-tagline { font-size: 13px; color: #93c5fd; font-weight: 600; }
+.work-desc { font-size: 14px; color: var(--ink-dim); flex: 1; }
+.work-desc strong { color: #fff; }
+.work-link { margin-top: 4px; font-size: 13px; font-weight: 700; color: var(--cyan); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.work-link:hover { text-shadow: 0 0 16px rgba(34,211,238,0.6); }
+
+/* ══════════════════════════════════════════════════════════════
+   TERMINAL — 终端
+══════════════════════════════════════════════════════════════ */
+.term-wrap { max-width: 780px; margin: 0 auto; }
+.term {
+  border-radius: 18px; overflow: hidden;
+  background: rgba(5, 9, 18, 0.75);
+  border: 1px solid rgba(255,255,255,0.13);
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 24px 70px rgba(0,0,0,0.55), 0 0 0 1px rgba(34,211,238,0.06), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.term-bar {
+  display: flex; align-items: center; gap: 8px; padding: 13px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03);
+}
+.term-bar .tl { width: 12px; height: 12px; border-radius: 50%; }
+.term-bar .title { margin-left: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-faint); }
+.term-bar .hint-badge { margin-left: auto; font-size: 10.5px; color: var(--ink-faint); font-family: 'JetBrains Mono', monospace; border: 1px solid rgba(255,255,255,0.12); padding: 3px 9px; border-radius: 99px; }
+.term-screen {
+  padding: 20px 22px; height: 340px; overflow-y: auto; cursor: text;
+  font-family: 'JetBrains Mono', monospace; font-size: 13.5px; line-height: 1.75;
+}
+.term-screen::-webkit-scrollbar { width: 6px; }
+.term-line { white-space: pre-wrap; word-break: break-word; animation: termIn .25s var(--ease-spring); }
+@keyframes termIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+.t-cmd { color: #a5f3fc; }
+.t-prompt { color: #34d399; font-weight: 700; }
+.t-out { color: rgba(238,242,255,0.75); }
+.t-dim { color: var(--ink-faint); }
+.t-grad { background: var(--grad-main); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700; }
+.term-input-row { display: flex; align-items: center; gap: 8px; }
+.term-input-row .t-prompt { flex-shrink: 0; }
+#termInput {
+  flex: 1; background: none; border: none; outline: none; color: var(--ink);
+  font-family: 'JetBrains Mono', monospace; font-size: 13.5px; caret-color: var(--cyan);
+}
+.term-note { text-align: center; font-size: 12px; color: var(--ink-faint); margin-top: 14px; font-family: 'JetBrains Mono', monospace; }
+
+/* ══════════════════════════════════════════════════════════════
+   CONTACT & FOOTER
+══════════════════════════════════════════════════════════════ */
+.contact-card { padding: 60px 40px; text-align: center; }
+.contact-card h3 { font-size: clamp(26px, 4vw, 40px); font-weight: 900; margin-bottom: 14px; }
+.contact-card h3 .grad { background: var(--grad-main); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: shimmerText 6s linear infinite; }
+.contact-card p { color: var(--ink-dim); max-width: 520px; margin: 0 auto 34px; font-size: 15px; }
+.contact-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+.contact-item {
+  display: inline-flex; align-items: center; gap: 10px; padding: 13px 22px;
+  border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  color: var(--ink); text-decoration: none; font-size: 14px; font-weight: 600;
+  transition: all .35s var(--ease-spring); cursor: pointer; font-family: inherit;
+}
+.contact-item:hover { transform: translateY(-4px); border-color: rgba(34,211,238,0.5); box-shadow: 0 12px 32px rgba(34,211,238,0.15); }
+.contact-item svg { width: 17px; height: 17px; color: var(--cyan); }
+
+#toast {
+  position: fixed; left: 50%; bottom: 40px; transform: translate(-50%, 20px);
+  padding: 12px 22px; border-radius: 999px; z-index: 500;
+  background: rgba(10,15,30,0.85); border: 1px solid rgba(52,211,153,0.4);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  color: #a7f3d0; font-size: 13.5px; font-weight: 700;
+  opacity: 0; pointer-events: none; transition: all .45s var(--ease-spring);
+  box-shadow: 0 10px 36px rgba(0,0,0,0.5);
+}
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+footer { text-align: center; padding: 40px 0 46px; color: var(--ink-faint); font-size: 12.5px; position: relative; z-index: 1; }
+footer .fline { width: 60%; height: 1px; margin: 0 auto 26px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent); }
+footer .fprompt { font-family: 'JetBrains Mono', monospace; margin-bottom: 8px; }
+
+#toTop {
+  position: fixed; right: 26px; bottom: 26px; z-index: 90; width: 48px; height: 48px;
+  border-radius: 50%; border: 1px solid var(--glass-border); cursor: pointer;
+  background: rgba(10,15,30,0.6); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  color: var(--ink); display: grid; place-items: center;
+  opacity: 0; pointer-events: none; transform: translateY(16px);
+  transition: all .45s var(--ease-spring);
+}
+#toTop.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+#toTop:hover { border-color: var(--cyan); box-shadow: 0 0 24px rgba(34,211,238,0.3); }
+#toTop svg { width: 19px; height: 19px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-stage">
+  <div class="aurora a1"></div><div class="aurora a2"></div><div class="aurora a3"></div><div class="aurora a4"></div>
+</div>
+<div class="bg-grid"></div>
+<canvas id="stars"></canvas>
+<div class="bg-noise"></div>
+<div id="scrollBar"></div>
+
+<div class="cursor-ring" id="cursorRing"></div>
+<div class="cursor-dot" id="cursorDot"></div>
+
+<!-- ═══ NAV ═══ -->
+<nav id="nav">
+  <span class="logo"><span class="dot"></span><span data-i18n="navName">余兴林</span></span>
+  <a class="nav-link" href="#hero" data-i18n="navHome">首页</a>
+  <a class="nav-link" href="#about" data-i18n="navAbout">关于</a>
+  <a class="nav-link" href="#journey" data-i18n="navJourney">旅程</a>
+  <a class="nav-link" href="#works" data-i18n="navWorks">作品</a>
+  <a class="nav-link" href="#playground" data-i18n="navTerm">终端</a>
+  <a class="nav-link" href="#contact" data-i18n="navContact">联系</a>
+  <button class="lang-btn" id="langBtn">EN</button>
+</nav>
+
+<div class="container">
+
+<!-- ═══ HERO ═══ -->
+<section id="hero">
+  <div class="hero-wrap">
+    <div>
+      <p class="hero-greet reveal"><span id="greeting">下午好</span>，<span data-i18n="greetSuffix">很高兴你来到这里</span></p>
+      <h1 class="hero-name reveal" data-delay="1"><span data-i18n="hName">我是</span> <span class="grad">余兴林</span></h1>
+      <p class="hero-en reveal" data-delay="1">XINGLIN YU · EST. 1994 · EARTH</p>
+
+      <p class="hero-manifesto reveal" data-delay="2" data-i18n="hManifesto">
+        六年前我在写无人机飞控，现在我在教<em>人形机器人</em>跑步。中间为<em>百万人</em>造过 AI，也创过业。
+      </p>
+      <p class="hero-manifesto reveal" data-delay="2" style="font-weight:800; color: var(--ink); margin-top: 10px;" data-i18n="hManifesto2">
+        下一站，想和你一起造点什么。
+      </p>
+
+      <div class="typewriter-row reveal" data-delay="3">
+        <span class="arrow">&gt;_</span>
+        <span data-i18n="typePrefix">最近在做：</span><span id="type-target"></span><span class="caret"></span>
+      </div>
+
+      <div class="btn-row reveal" data-delay="4">
+        <a class="btn btn-primary magnetic" href="#journey">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+          <span data-i18n="btnStory">读我的故事</span>
+        </a>
+        <button class="btn btn-ghost magnetic" id="copyEmail">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+          <span data-i18n="btnCopy">复制邮箱</span>
+        </button>
+        <a class="btn btn-ghost magnetic" href="#playground">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+          <span data-i18n="btnTerm">玩终端</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="hero-visual reveal" data-delay="3" id="heroVisual">
+      <div class="avatar-orbit">
+        <div class="avatar-ring"></div>
+        <img src="assets/avatar.jpg" alt="余兴林 Xinglin Yu" />
+        <span class="orbit-chip c1">✨ Ex-Copilot</span>
+        <span class="orbit-chip c2">🤖 Robot RL</span>
+        <span class="orbit-chip c3">🚀 Founder</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-hint"><div class="mouse"></div><span data-i18n="scrollHint">向下滚动</span></div>
+</section>
+</div>
+
+<!-- ═══ MANIFESTO MARQUEE ═══ -->
+<div class="manifesto-strip">
+  <div class="big-marquee" id="bigMarquee"></div>
+</div>
+
+<div class="container">
+
+<!-- ═══ ABOUT — BENTO ═══ -->
+<section id="about">
+  <div class="sec-head reveal">
+    <span class="num">01</span><h2 data-i18n="secAbout">关于我</h2>
+    <span class="sub" data-i18n="secAboutSub">/ 一格一格地认识我</span>
+  </div>
+
+  <div class="bento">
+    <!-- NOW -->
+    <div class="b-tile glass glow-card tile-now reveal"><div class="card-glow"></div>
+      <div class="b-label"><span class="bdot" style="background:#34d399"></span><span data-i18n="bNow">Now · 此刻</span></div>
+      <div class="now-list">
+        <div class="now-item"><span class="pulse-dot"></span><div data-i18n="now1"><b>刚结束微软五年旅程</b>，正在寻找下一段值得全情投入的冒险（全栈 / AI Agent）。</div></div>
+        <div class="now-item"><span class="pulse-dot"></span><div data-i18n="now2">在 MuJoCo 里<b>教宇树 G1 人形机器人</b>跑步 —— PPO、train → play、sim2real。</div></div>
+        <div class="now-item"><span class="pulse-dot"></span><div data-i18n="now3">运营 <b>HiTalker</b>（AI 演讲私教），持续迭代 ASR + LLM 双引擎点评。</div></div>
+        <div class="now-item"><span class="pulse-dot"></span><div data-i18n="now4">重度 Agent 工具用户：Cursor / Claude Code / Codex 是我的第二双手。</div></div>
+      </div>
+    </div>
+
+    <!-- stats -->
+    <div class="b-tile glass glow-card tile-stats reveal" data-delay="1"><div class="card-glow"></div>
+      <div class="b-label"><span class="bdot" style="background:#a78bfa"></span><span data-i18n="bNums">By the numbers · 数字</span></div>
+      <div class="row">
+        <div class="stat"><div class="val" data-count="6">0</div><div class="lbl" data-i18n="stYears">年工程经验</div></div>
+        <div class="stat"><div class="val" data-count="1000000" data-compact="1">0</div><div class="lbl" data-i18n="stUsers">用户（Copilot）</div></div>
+        <div class="stat"><div class="val" data-count="10000" data-compact="1" data-suffix="+">0</div><div class="lbl" data-i18n="stHt">HiTalker 用户</div></div>
+        <div class="stat"><div class="val" data-count="5">0</div><div class="lbl" data-i18n="stPatent">项 AI 专利</div></div>
+      </div>
+    </div>
+
+    <!-- where -->
+    <div class="b-tile glass glow-card tile-where reveal" data-delay="2"><div class="card-glow"></div>
+      <div class="b-label"><span class="bdot" style="background:#60a5fa"></span><span data-i18n="bWhere">Where · 坐标</span></div>
+      <div class="where-city">北京</div>
+      <div class="where-meta" data-i18n="whereMeta">39.9°N 116.4°E · 可远程</div>
+    </div>
+
+    <!-- clock -->
+    <div class="b-tile glass glow-card tile-clock reveal" data-delay="3"><div class="card-glow"></div>
+      <div class="b-label"><span class="bdot" style="background:#f472b6"></span><span data-i18n="bClock">Local time · 时间</span></div>
+      <div id="liveClock">--:--:--</div>
+      <div class="clock-meta">GMT+8 · <span data-i18n="clockMeta">我大概醒着</span></div>
+    </div>
+
+    <!-- education -->
+    <div class="b-tile glass glow-card tile-edu reveal" data-delay="2"><div class="card-glow"></div>
+      <div class="b-label"><span class="bdot" style="background:#22d3ee"></span><span data-i18n="bEdu">Education · 学历</span></div>
+      <div class="edu-lines">
+      <div class="edu-line"><span class="s" data-i18n="ed1s">大连理工大学 · 硕士</span><span class="d" data-i18n="ed1d">控制理论与控制工程</span><span class="y">2016–19</span></div>
+      <div class="edu-line"><span class="s" data-i18n="ed2s">大连理工大学 · 本科</span><span class="d" data-i18n="ed2d">飞行器设计与工程</span><span class="y">2012–16</span></div>
+      <div class="edu-line"><span class="s" data-i18n="ed3s">哈工大 / 上智大学</span><span class="d" data-i18n="ed3d">交流 · 东京的夏天很热</span><span class="y">13–16</span></div>
+      <div class="edu-line"><span class="s" data-i18n="ed4s">论文</span><span class="d" data-i18n="ed4d">1 SCI + 2 EI，强化学习方向</span><span class="y">IEEE</span></div>
+      </div>
+    </div>
+
+    <!-- awards -->
+    <div class="b-tile glass glow-card tile-awards reveal" data-delay="3"><div class="card-glow"></div>
+      <div class="b-label"><span class="bdot" style="background:#fbbf24"></span><span data-i18n="bAwards">Trophies · 奖杯柜</span></div>
+      <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+        <div class="award-line cert" data-lightbox="assets/award-2024.png" data-caption="微软 2024 全球 Hackathon 编程大赛 · 杰出项目奖"><span class="yr">2024</span><span>🏆 <span data-i18n="aw1">微软黑客松 · 北京赛区杰出奖</span></span><span class="cert-badge" data-i18n="vCert">点击看证书</span></div>
+        <div class="award-line cert" data-lightbox="assets/award-2023.png" data-caption="微软 2023 全球 Hackathon 编程大赛 · Ship It 奖"><span class="yr">2023</span><span>🚢 <span data-i18n="aw2">微软黑客松 · Ship It 奖</span></span><span class="cert-badge" data-i18n="vCert">点击看证书</span></div>
+        <div class="award-line"><span class="yr">2016</span><span>🥈 <span data-i18n="aw3">iCAN 国际创新创业大赛 · 全国二等奖</span></span></div>
+        <div class="award-line"><span class="yr">2015</span><span>⭐ <span data-i18n="aw4">挑战杯 · 省级特等奖</span></span></div>
+        <div class="award-line"><span class="yr">2014</span><span>📱 <span data-i18n="aw5">移动应用开发大赛 · 省级一等奖</span></span></div>
+      </div>
+    </div>
+
+    <!-- photos -->
+    <div class="b-tile glass glow-card tile-photo reveal" data-delay="2" data-lightbox="assets/speak.jpg" data-caption="微软 Reactor · Post Microsoft Build and AI Day 演讲">
+      <img src="assets/speak.jpg" alt="微软 Reactor 演讲" loading="lazy" />
+      <div class="card-glow"></div>
+      <div class="ph-cap"><span class="cap-chip"><svg class="zoom-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/></svg><span data-i18n="capSpeak">台上 · 微软 Reactor 演讲</span></span></div>
+    </div>
+
+    <div class="b-tile glass glow-card tile-photo reveal" data-delay="3" data-lightbox="assets/cheer.jpg" data-caption="台下 · 值得庆祝的时刻">
+      <img src="assets/cheer.jpg" alt="庆祝瞬间" loading="lazy" />
+      <div class="card-glow"></div>
+      <div class="ph-cap"><span class="cap-chip"><svg class="zoom-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/></svg><span data-i18n="capCheer">台下 · 值得庆祝的时刻</span></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ JOURNEY ═══ -->
+<section id="journey">
+  <div class="sec-head reveal">
+    <span class="num">02</span><h2 data-i18n="secJourney">一段不太安分的旅程</h2>
+    <span class="sub" data-i18n="secJourneySub">/ 2014 → 现在，从无人机到人形机器人</span>
+  </div>
+
+  <div class="chapters">
+
+    <div class="chapter glass glow-card reveal">
+      <div class="card-glow"></div>
+      <div><div class="ch-ghost">00</div><div class="ch-year">2012 – <b data-i18n="j0now">2016</b></div></div>
+      <div class="ch-body">
+        <h3 data-i18n="j0title">起点 · 大工飞控协会</h3>
+        <div class="ch-role" data-i18n="j0role">会长 · 无人机与自动控制系统</div>
+        <p class="ch-story" data-i18n="j0story">
+          一切开始于大连理工的实验室：带着 20 多个人<strong>画 PCB、写嵌入式、调 PID</strong>，在 Simulink 和 Gazebo 里摔碎过无数架虚拟四旋翼，再让真机稳稳悬停。那两年交付了两个<strong>百万级</strong>控制系统项目。当时的我没料到，「让机器听懂人话」会变成我之后十年做的事。
+        </p>
+        <div class="ch-facts"><span class="fact y">¥1M+ 项目 ×2</span><span class="fact">20+ 人团队</span><span class="fact">PID + RL 控制</span><span class="fact v">国家级奖项 ×3</span></div>
+      </div>
+    </div>
+
+    <div class="chapter glass glow-card reveal">
+      <div class="card-glow"></div>
+      <div><div class="ch-ghost">01</div><div class="ch-year">2020 – <b>2021</b></div></div>
+      <div class="ch-body">
+        <h3 data-i18n="j1title">百度 · 给数据中心省电的人</h3>
+        <div class="ch-role" data-i18n="j1role">大数据研发工程师 · AI & Cloud</div>
+        <p class="ch-story" data-i18n="j1story">
+          我的第一份工作不是写网页，是给整个数据中心「调空调」。用 Spark 搭数据管道、Sklearn 做部件建模，再用<strong>图优化 + 强化学习</strong>求解节能策略，让阳泉数据中心一年省下 <strong>20% 电费</strong>。那是我第一次意识到：代码真的可以驱动物理世界。
+        </p>
+        <div class="ch-facts"><span class="fact g">年节能 20%</span><span class="fact g">PUE → 1.1</span><span class="fact y">AI 专利 ×2 主笔</span><span class="fact">Spark / TF</span></div>
+      </div>
+    </div>
+
+    <div class="chapter glass glow-card reveal">
+      <div class="card-glow"></div>
+      <div><div class="ch-ghost">02</div><div class="ch-year">2021 – <b>2025</b></div></div>
+      <div class="ch-body">
+        <h3 data-i18n="j2title">微软 Bing Ads · 数十亿次投放的守夜人</h3>
+        <div class="ch-role" data-i18n="j2role">软件工程师 · 数据平台（70% 后端 + 30% 前端）</div>
+        <p class="ch-story" data-i18n="j2story">
+          三年半时间，我守着 Bing Ads 广告系统的稳定运行：从零搭建<strong>自动监控与自愈诊断平台</strong>，把故障定位从「天级」压到「小时级」，故障率降了 <strong>20%</strong>；也负责 PB 级广告数据从离线加工到在线检索的全链路。PB 级数据教我的第一课：永远敬畏生产环境。
+        </p>
+        <div class="ch-facts"><span class="fact">P90 天级→小时级</span><span class="fact g">故障率 −20%</span><span class="fact v">PB 级数据</span><span class="fact">C# / Azure / Spark</span></div>
+      </div>
+    </div>
+
+    <div class="chapter glass glow-card reveal">
+      <div class="card-glow"></div>
+      <div><div class="ch-ghost">03</div><div class="ch-year">2023 – <b data-i18n="j3now">至今</b></div></div>
+      <div class="ch-body">
+        <h3 data-i18n="j3title">HiTalker · 一场说走就走的创业</h3>
+        <div class="ch-role" data-i18n="j3role">创始人 · 全栈 AI 工程师 · hitalker.com</div>
+        <p class="ch-story" data-i18n="j3story">
+          2023 年夏天，我拉着 7 个人的团队开始做 <strong>AI 演讲私教</strong>。ASR + LLM 双引擎点评、四端齐发（Web / iOS / Android / 小程序）、支付鉴权全部生产化落地，累计服务<strong>近万用户</strong>，满意度 90%+。从 0 到 1 的每一步都亲自踩过 —— 也都记住了。
+        </p>
+        <div class="ch-facts"><span class="fact p">≈10,000 用户</span><span class="fact g">满意度 90%+</span><span class="fact">7 人团队</span><span class="fact v">ASR + LLM 双引擎</span></div>
+      </div>
+    </div>
+
+    <div class="chapter glass glow-card reveal">
+      <div class="card-glow"></div>
+      <div><div class="ch-ghost">04</div><div class="ch-year">2025 – <b>2026</b></div></div>
+      <div class="ch-body">
+        <h3 data-i18n="j4title">微软 Copilot · 为百万人造 AI</h3>
+        <div class="ch-role" data-i18n="j4role">软件工程师 L62 · AI & Copilot（copilot.com）</div>
+        <p class="ch-story" data-i18n="j4story">
+          E2E 负责 Copilot 的 AI 功能：<strong>Copilot 连接器、图片生成、生成式 UI、Agentic 工作流</strong>，还有 Android 与 Web 前端。看着自己写的东西被<strong>数百万人</strong>每天使用，是工程师最上头的时刻 —— 核心功能日活采用率 +20%，会话时长 +30%，顺手拿了两届黑客松奖和一项生成式 UI 专利。
+        </p>
+        <div class="ch-facts"><span class="fact">DAU 采用 +20%</span><span class="fact">会话时长 +30%</span><span class="fact y">🏆 黑客松 ×2</span><span class="fact y">📋 AI 专利</span></div>
+      </div>
+    </div>
+
+    <div class="chapter glass glow-card reveal">
+      <div class="card-glow"></div>
+      <div><div class="ch-ghost">05</div><div class="ch-year">2026 – <b data-i18n="j5now">现在</b></div></div>
+      <div class="ch-body">
+        <h3 data-i18n="j5title">具身智能 · 教机器人跑步</h3>
+        <div class="ch-role" data-i18n="j5role">独立研究 · Unitree G1 + MuJoCo</div>
+        <p class="ch-story" data-i18n="j5story">
+          现在，我在 MuJoCo 仿真环境里训练宇树 <strong>G1 人形机器人</strong>的速度跟踪策略：从连续状态动力学建模到 <strong>PPO</strong> 收敛，train → play 全流程跑通。十年前在 Simulink 里调 PID 的那个大学生，绕了一大圈又回到了控制理论 —— 感觉像回家。
+        </p>
+        <div class="ch-facts"><span class="fact p">Unitree G1</span><span class="fact p">PPO / rsl_rl</span><span class="fact">mjlab</span><span class="fact v">sim2real</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ WORKS ═══ -->
+<section id="works">
+  <div class="sec-head reveal">
+    <span class="num">03</span><h2 data-i18n="secWorks">拿得出手的作品</h2>
+    <span class="sub" data-i18n="secWorksSub">/ 每一件都从第一行代码写到上线</span>
+  </div>
+
+  <div class="works-grid">
+    <div class="work-card glass glow-card reveal"><div class="card-glow"></div>
+      <div class="work-media" style="--cover: linear-gradient(135deg, rgba(34,211,238,0.25), rgba(96,165,250,0.2))">
+        <span class="w-emoji">🎤</span>
+        <div class="ph-frame">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+          <span class="ph-label" data-i18n="phVideo">宣传视频位</span>
+          <code>assets/promo-hitalker.mp4</code>
+        </div>
+        <span class="video-badge">▶ <span data-i18n="vHover">悬停播放</span></span>
+        <video muted loop playsinline preload="metadata" src="assets/promo-hitalker.mp4"></video>
+      </div>
+      <div class="work-body">
+        <div class="work-title" data-i18n="w1title">HiTalker</div>
+        <div class="work-tagline" data-i18n="w1tag">你的 AI 演讲私教</div>
+        <p class="work-desc" data-i18n="w1desc">从 0 到 1：ASR 转写 + LLM 点评双引擎，音视频分析、实时反馈、成长曲线，<strong>四端</strong>齐发。7 人小团队，近万用户。</p>
+        <a class="work-link" href="https://hitalker.com" target="_blank" rel="noreferrer">hitalker.com →</a>
+      </div>
+    </div>
+
+    <div class="work-card glass glow-card reveal" data-delay="1"><div class="card-glow"></div>
+      <div class="work-media" style="--cover: linear-gradient(135deg, rgba(244,114,182,0.22), rgba(167,139,250,0.2))">
+        <span class="w-emoji">🤖</span>
+        <div class="ph-frame">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+          <span class="ph-label" data-i18n="phVideo">宣传视频位</span>
+          <code>assets/promo-g1.mp4</code>
+        </div>
+        <span class="video-badge">▶ <span data-i18n="vHover">悬停播放</span></span>
+        <video muted loop playsinline preload="metadata" src="assets/promo-g1.mp4"></video>
+      </div>
+      <div class="work-body">
+        <div class="work-title" data-i18n="w2title">G1 Locomotion</div>
+        <div class="work-tagline" data-i18n="w2tag">教人形机器人跑步</div>
+        <p class="work-desc" data-i18n="w2desc">基于 mjlab + rsl_rl 训练宇树 G1 全身速度跟踪策略。物理仿真、奖励设计、课程学习，train → play 全流程，下一步 sim2real。</p>
+        <a class="work-link" href="#journey" data-i18n="w2link">看研究笔记 →</a>
+      </div>
+    </div>
+
+    <div class="work-card glass glow-card reveal" data-delay="2"><div class="card-glow"></div>
+      <div class="work-media" style="--cover: linear-gradient(135deg, rgba(52,211,153,0.22), rgba(251,191,36,0.16))">
+        <span class="w-emoji">🛸</span>
+        <div class="ph-frame">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+          <span class="ph-label" data-i18n="phVideo">宣传视频位</span>
+          <code>assets/promo-uav.mp4</code>
+        </div>
+        <span class="video-badge">▶ <span data-i18n="vHover">悬停播放</span></span>
+        <video muted loop playsinline preload="metadata" src="assets/promo-uav.mp4"></video>
+      </div>
+      <div class="work-body">
+        <div class="work-title" data-i18n="w3title">四旋翼全栈</div>
+        <div class="work-tagline" data-i18n="w3tag">从 PCB 螺旋桨到 RL 控制</div>
+        <p class="work-desc" data-i18n="w3desc">飞控板自己画、嵌入式自己写、ROS 框架自己搭：PID 串并联控制 + 强化学习位置控制，仿真到真机，交付两个<strong>百万级</strong>项目。</p>
+        <a class="work-link" href="#journey" data-i18n="w3link">回到起点 →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PLAYGROUND — TERMINAL ═══ -->
+<section id="playground">
+  <div class="sec-head reveal">
+    <span class="num">04</span><h2 data-i18n="secTerm">不好好说话区</h2>
+    <span class="sub" data-i18n="secTermSub">/ 工程师的自我介绍方式 · 试试输入 help</span>
+  </div>
+
+  <div class="term-wrap reveal" data-delay="1">
+    <div class="term">
+      <div class="term-bar">
+        <span class="tl" style="background:#ff5f57"></span>
+        <span class="tl" style="background:#febc2e"></span>
+        <span class="tl" style="background:#28c840"></span>
+        <span class="title">xinglin@homepage — zsh</span>
+        <span class="hint-badge">⌘K 不行，直接打字</span>
+      </div>
+      <div class="term-screen" id="termScreen">
+        <div class="term-line t-dim" id="termBoot"></div>
+      </div>
+    </div>
+    <p class="term-note" data-i18n="termNote">试试：help · whoami · skills · journey · projects · contact · sudo hire-me</p>
+  </div>
+</section>
+
+<!-- ═══ CONTACT ═══ -->
+<section id="contact">
+  <div class="contact-card glass reveal">
+    <h3><span data-i18n="cTitle1">故事讲完了，</span><span class="grad" data-i18n="cTitle2">该你说话了</span></h3>
+    <p data-i18n="cDesc">如果你在做有意思的产品，需要一位能从像素打到机器人、E2E 独当一面的工程师 —— 邮件通常 24 小时内回复。</p>
+    <div class="contact-links">
+      <a class="contact-item magnetic" href="mailto:xinglin-yu@outlook.com">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+        xinglin-yu@outlook.com
+      </a>
+      <a class="contact-item magnetic" href="tel:+8613161310232">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        +86 131 6131 0232
+      </a>
+      <a class="contact-item magnetic" href="https://www.linkedin.com/in/xinglinyu" target="_blank" rel="noreferrer">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45z"/></svg>
+        linkedin.com/in/xinglinyu
+      </a>
+      <button class="contact-item magnetic" id="copyEmail2">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+        <span data-i18n="btnCopy2">一键复制邮箱</span>
+      </button>
+    </div>
+  </div>
+</section>
+
+</div><!-- /container -->
+
+<footer>
+  <div class="fline"></div>
+  <p class="fprompt">$ exit <span class="t-dim"># 感谢到访，门一直开着</span></p>
+  <p>© 2026 余兴林 Xinglin Yu · <span data-i18n="footNote">手写玻璃，亲手打磨</span> ✦</p>
+</footer>
+
+<button id="toTop" aria-label="back to top">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+</button>
+
+<div id="toast"></div>
+
+<div id="lightbox" aria-label="image viewer">
+  <img src="" alt="" />
+  <div class="lb-cap"></div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   I18N
+══════════════════════════════════════════════════════════════ */
+const I18N = {
+  en: {
+    navName: "Xinglin Yu", navHome: "Home", navAbout: "About", navJourney: "Journey", navWorks: "Works", navTerm: "Terminal", navContact: "Contact",
+    greetSuffix: "great to have you here", hName: "I'm",
+    hManifesto: "Six years ago I was writing flight-control code; now I'm teaching <em>humanoid robots</em> to run. In between, I built AI for <em>millions</em> and founded a startup.",
+    hManifesto2: "Next stop — let's build something together.",
+    typePrefix: "lately: ",
+    typesEn: ["training Unitree G1 to run", "shipping Copilot features to millions", "running HiTalker with a 7-person crew", "living inside Claude Code & Cursor", "hunting for the next adventure"],
+    btnStory: "Read my story", btnCopy: "Copy my email", btnTerm: "Play with terminal", scrollHint: "Scroll",
+    secAbout: "About Me", secAboutSub: "/ one tile at a time",
+    secJourney: "A Restless Journey", secJourneySub: "/ 2014 → now, from drones to humanoids",
+    secWorks: "Work I'm Proud Of", secWorksSub: "/ every piece, first line to launch",
+    secTerm: "The Straight-Talk Zone", secTermSub: "/ how engineers introduce themselves · try help",
+    secContact: "", 
+    bNow: "Now", bNums: "By the numbers", bWhere: "Where", bClock: "Local time", bEdu: "Education", bAwards: "Trophy cabinet",
+    now1: "<b>Just wrapped 5 years at Microsoft</b>, looking for the next adventure worth going all-in on (Full-stack / AI Agent).",
+    now2: "Teaching the <b>Unitree G1 humanoid</b> to run in MuJoCo — PPO, train → play, sim2real.",
+    now3: "Running <b>HiTalker</b> (AI speech coach), iterating the ASR + LLM dual-engine review.",
+    now4: "Heavy Agent-tooling user: Cursor / Claude Code / Codex are my second pair of hands.",
+    stYears: "yrs engineering", stUsers: "users (Copilot)", stHt: "HiTalker users", stPatent: "AI patents",
+    whereMeta: "39.9°N 116.4°E · remote-friendly", clockMeta: "probably awake",
+    ed1s: "DUT · M.Sc.", ed1d: "Control Theory & Engineering", ed2s: "DUT · B.Eng.", ed2d: "Flight Vehicle Design",
+    ed3s: "HIT / Sophia Univ.", ed3d: "exchange · Tokyo summer was hot", ed4s: "Papers", ed4d: "1 SCI + 2 EI, on RL",
+    aw1: "Microsoft Hackathon · Beijing Outstanding", aw2: "Microsoft Hackathon · Ship It Award",
+    aw3: "iCAN Contest · National 2nd Prize", aw4: "Challenge Cup · Provincial Grand Prize", aw5: "Mobile App Contest · Provincial 1st",
+    j0now: "2016", j0title: "Origin · DUT Flight Control Club", j0role: "President · UAV & automatic control",
+    j0story: "It all started in a lab at Dalian University of Technology: leading 20+ students <strong>drawing PCBs, writing firmware, tuning PID</strong>, crashing countless virtual quadrotors in Simulink and Gazebo before making real ones hover. We delivered two <strong>million-RMB</strong> control projects. I didn't know then that \"making machines understand humans\" would become my next decade.",
+    j1title: "Baidu · The guy who cut data-center power bills", j1role: "Big Data Engineer · AI & Cloud",
+    j1story: "My first job wasn't building websites — it was \"tuning the AC\" for entire data centers. Spark pipelines, component-level Sklearn models, then <strong>graph optimization + reinforcement learning</strong> to solve energy-saving policies, saving Yangquan data center <strong>20% of its power bill</strong> a year. First time I truly felt: code can drive the physical world.",
+    j2title: "Microsoft Bing Ads · Night watchman of billions of ad offers", j2role: "Software Engineer · Data platform (70% BE + 30% FE)",
+    j2story: "For 3.5 years I kept Bing Ads stable: built the <strong>automated monitoring & self-healing platform</strong> from scratch, compressing failure triage from days to hours and cutting failure rate by <strong>20%</strong>; owned the full pipeline of PB-scale ad data from offline processing to online retrieval. PB-scale data taught me lesson one: respect production, always.",
+    j3now: "now", j3title: "HiTalker · A startup we just went for", j3role: "Founder · Full-stack AI Engineer · hitalker.com",
+    j3story: "In summer 2023 I pulled together a 7-person team to build an <strong>AI speech coach</strong>. ASR + LLM dual-engine feedback, four clients (Web / iOS / Android / Mini Program), productionized auth & payments — <strong>~10K users</strong> and 90%+ satisfaction. I personally stepped on every landmine from 0 to 1. And remembered each one.",
+    j4title: "Microsoft Copilot · Building AI for millions", j4role: "Software Engineer L62 · AI & Copilot (copilot.com)",
+    j4story: "Owned Copilot AI features E2E: <strong>Connectors, Image Generation, Generative UI, Agentic workflows</strong>, plus Android & Web frontends. Watching something you wrote get used by <strong>millions daily</strong> is the ultimate engineering high — core-feature DAU adoption +20%, session duration +30%, two hackathon wins and a Generative-UI patent along the way.",
+    j5now: "now", j5title: "Embodied AI · Teaching robots to run", j5role: "Independent research · Unitree G1 + MuJoCo",
+    j5story: "These days I train velocity-tracking policies for the Unitree <strong>G1 humanoid</strong> in MuJoCo: from continuous-state dynamics modeling to <strong>PPO</strong> convergence, full train → play loop. The undergrad who tuned PID in Simulink ten years ago has circled back to control theory — feels like coming home.",
+    w1title: "HiTalker", w1tag: "Your AI speech coach", w1desc: "Zero to one: ASR transcription + LLM review dual engine, audio/video analysis, real-time feedback, growth curves — <strong>four platforms</strong>, 7-person team, ~10K users.",
+    w2title: "G1 Locomotion", w2tag: "Teaching a humanoid to run", w2desc: "Training Unitree G1 whole-body velocity tracking with mjlab + rsl_rl. Physics sim, reward design, curriculum learning, train → play, sim2real next.",
+    w2link: "see research notes →", w3link: "back to the origin →",
+    w3title: "Quadrotor, Full Stack", w3tag: "From PCB & props to RL control", w3desc: "Drew the flight-controller board, wrote the firmware, built the ROS stack: cascade PID + RL position control, sim to real hardware, two <strong>million-RMB</strong> projects delivered.",
+    cTitle1: "That's my story — ", cTitle2: "now it's your turn",
+    cDesc: "Building something interesting and need an engineer who can go from pixels to robots and own features E2E? I usually reply within 24 hours.",
+    btnCopy2: "One-click copy email", footNote: "glass, hand-polished",
+    termNote: "try: help · whoami · skills · journey · projects · contact · sudo hire-me",
+    phVideo: "Promo video slot", vHover: "hover to play", vCert: "view cert",
+    capSpeak: "On stage · speaking at Microsoft Reactor", capCheer: "Off stage · a moment worth celebrating",
+  },
+  zh: {
+    types: ["训练 G1 机器人跑步", "给百万人造 Copilot 功能", "带 7 人团队做 HiTalker", "住在 Claude Code 里写代码", "寻找下一段冒险"],
+  }
+};
+let lang = "zh";
+
+const BIG_WORDS = [
+  ["从像素到机器人", true], ["BUILD", false], ["全栈 · Agent · 强化学习", false], ["SHIP", true],
+  ["让机器听懂人话", false], ["LEARN", false], ["0 → 1 → 100万用户", true], ["REPEAT", false],
+];
+(function buildBigMarquee() {
+  const m = document.getElementById("bigMarquee");
+  const make = () => BIG_WORDS.map(([t, solid]) =>
+    `<span class="${solid ? "solid" : ""}">${t} ✦</span>`).join("");
+  m.innerHTML = make() + make();
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   GREETING BY TIME
+══════════════════════════════════════════════════════════════ */
+(function greeting() {
+  const h = new Date().getHours();
+  const g = document.getElementById("greeting");
+  const zh = h < 5 ? "夜深了" : h < 9 ? "早上好" : h < 12 ? "上午好" : h < 18 ? "下午好" : h < 23 ? "晚上好" : "夜深了";
+  const en = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  g.textContent = lang === "zh" ? zh : en;
+  window.__setGreeting = () => { g.textContent = en; };
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   PARTICLE STARFIELD
+══════════════════════════════════════════════════════════════ */
+(function particles() {
+  const cv = document.getElementById("stars"), ctx = cv.getContext("2d");
+  let W, H, pts = [], mouse = { x: -9999, y: -9999 };
+  function resize() {
+    W = cv.width = innerWidth * devicePixelRatio;
+    H = cv.height = innerHeight * devicePixelRatio;
+    cv.style.width = innerWidth + "px"; cv.style.height = innerHeight + "px";
+    const n = Math.min(90, Math.floor(innerWidth / 16));
+    pts = Array.from({ length: n }, () => ({
+      x: Math.random() * W, y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.22 * devicePixelRatio,
+      vy: (Math.random() - 0.5) * 0.22 * devicePixelRatio,
+      r: (Math.random() * 1.4 + 0.5) * devicePixelRatio,
+      tw: Math.random() * Math.PI * 2,
+    }));
+  }
+  resize(); addEventListener("resize", resize);
+  addEventListener("pointermove", e => { mouse.x = e.clientX * devicePixelRatio; mouse.y = e.clientY * devicePixelRatio; });
+  const LINK = 130 * devicePixelRatio;
+  function tick() {
+    ctx.clearRect(0, 0, W, H);
+    for (const p of pts) {
+      p.x += p.vx; p.y += p.vy; p.tw += 0.02;
+      if (p.x < 0 || p.x > W) p.vx *= -1;
+      if (p.y < 0 || p.y > H) p.vy *= -1;
+      const dx = mouse.x - p.x, dy = mouse.y - p.y, d = Math.hypot(dx, dy);
+      if (d < 180 * devicePixelRatio && d > 1) { p.x += dx / d * 0.35; p.y += dy / d * 0.35; }
+      const a = 0.35 + Math.sin(p.tw) * 0.25;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7);
+      ctx.fillStyle = `rgba(190, 210, 255, ${Math.max(0.08, a)})`; ctx.fill();
+    }
+    for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
+      const a = pts[i], b = pts[j], dx = a.x - b.x, dy = a.y - b.y, d = Math.hypot(dx, dy);
+      if (d < LINK) {
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+        ctx.strokeStyle = `rgba(140, 160, 255, ${(1 - d / LINK) * 0.14})`;
+        ctx.lineWidth = devicePixelRatio * 0.6; ctx.stroke();
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+  tick();
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   CURSOR
+══════════════════════════════════════════════════════════════ */
+(function cursor() {
+  const dot = document.getElementById("cursorDot"), ring = document.getElementById("cursorRing");
+  let mx = -100, my = -100, rx = -100, ry = -100;
+  addEventListener("pointermove", e => { mx = e.clientX; my = e.clientY; });
+  (function loop() {
+    rx += (mx - rx) * 0.16; ry += (my - ry) * 0.16;
+    dot.style.transform = `translate(${mx}px, ${my}px) translate(-50%,-50%)`;
+    ring.style.transform = `translate(${rx}px, ${ry}px) translate(-50%,-50%)`;
+    requestAnimationFrame(loop);
+  })();
+  document.querySelectorAll("a, button, .glow-card, .big-marquee span").forEach(el => {
+    el.addEventListener("pointerenter", () => ring.classList.add("hovering"));
+    el.addEventListener("pointerleave", () => ring.classList.remove("hovering"));
+  });
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   TYPEWRITER
+══════════════════════════════════════════════════════════════ */
+(function typewriter() {
+  const el = document.getElementById("type-target");
+  let list = I18N.zh.types, li = 0, ci = 0, del = false;
+  function step() {
+    const word = list[li];
+    el.textContent = word.slice(0, ci);
+    if (!del && ci < word.length) { ci++; setTimeout(step, 85); }
+    else if (!del) { del = true; setTimeout(step, 1800); }
+    else if (ci > 0) { ci--; setTimeout(step, 34); }
+    else { del = false; li = (li + 1) % list.length; setTimeout(step, 320); }
+  }
+  step();
+  window.__setTypes = (l) => { list = l; li = 0; ci = 0; del = false; };
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   REVEAL + COUNTERS
+══════════════════════════════════════════════════════════════ */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(en => {
+    if (!en.isIntersecting) return;
+    en.target.classList.add("in");
+    en.target.querySelectorAll("[data-count]").forEach(runCounter);
+    io.unobserve(en.target);
+  });
+}, { threshold: 0.15 });
+
+function runCounter(el) {
+  const target = +el.dataset.count, compact = el.dataset.compact, suffix = el.dataset.suffix || "";
+  const t0 = performance.now(), dur = 1600;
+  (function frame(t) {
+    const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+    let v = Math.round(target * e);
+    el.textContent = (compact && v >= 10000 ? (v / 10000).toFixed(1).replace(/\.0$/, "") + "万" : v) + suffix;
+    if (p < 1) requestAnimationFrame(frame);
+  })(t0);
+}
+document.querySelectorAll(".reveal").forEach(el => io.observe(el));
+
+/* ══════════════════════════════════════════════════════════════
+   LIVE CLOCK
+══════════════════════════════════════════════════════════════ */
+(function clock() {
+  const el = document.getElementById("liveClock");
+  function tick() {
+    const d = new Date();
+    el.textContent = [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, "0")).join(":");
+  }
+  tick(); setInterval(tick, 1000);
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   NAV + SCROLL PROGRESS
+══════════════════════════════════════════════════════════════ */
+(function navLogic() {
+  const nav = document.getElementById("nav"), bar = document.getElementById("scrollBar");
+  const links = [...document.querySelectorAll(".nav-link")];
+  const sections = links.map(a => document.querySelector(a.getAttribute("href")));
+  function update() {
+    nav.classList.toggle("scrolled", scrollY > 40);
+    bar.style.width = (scrollY / (document.documentElement.scrollHeight - innerHeight) * 100) + "%";
+    let idx = 0;
+    sections.forEach((s, i) => { if (s && s.getBoundingClientRect().top < innerHeight * 0.4) idx = i; });
+    links.forEach((a, i) => a.classList.toggle("active", i === idx));
+  }
+  addEventListener("scroll", update, { passive: true }); update();
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   TILT + GLOW
+══════════════════════════════════════════════════════════════ */
+document.querySelectorAll(".glow-card").forEach(card => {
+  card.addEventListener("pointermove", e => {
+    const r = card.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    card.style.setProperty("--mx", x + "px");
+    card.style.setProperty("--my", y + "px");
+    if (card.classList.contains("work-card") || card.classList.contains("b-tile")) {
+      const rx = ((y / r.height) - 0.5) * -4, ry = ((x / r.width) - 0.5) * 4;
+      card.style.transform = `perspective(900px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+    }
+  });
+  card.addEventListener("pointerleave", () => { card.style.transform = ""; });
+});
+
+/* ══════════════════════════════════════════════════════════════
+   MAGNETIC
+══════════════════════════════════════════════════════════════ */
+document.querySelectorAll(".magnetic").forEach(btn => {
+  btn.addEventListener("pointermove", e => {
+    const r = btn.getBoundingClientRect();
+    const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    btn.style.transform = `translate(${dx * 0.22}px, ${dy * 0.28}px)`;
+  });
+  btn.addEventListener("pointerleave", () => btn.style.transform = "");
+});
+
+/* ══════════════════════════════════════════════════════════════
+   HERO PARALLAX
+══════════════════════════════════════════════════════════════ */
+(function heroParallax() {
+  const v = document.getElementById("heroVisual");
+  if (!v) return;
+  addEventListener("pointermove", e => {
+    const dx = (e.clientX / innerWidth - 0.5), dy = (e.clientY / innerHeight - 0.5);
+    v.style.transform = `translate(${dx * 18}px, ${dy * 14}px)`;
+  });
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   COPY EMAIL + TOAST
+══════════════════════════════════════════════════════════════ */
+(function copyEmail() {
+  const toast = document.getElementById("toast");
+  let timer;
+  function showToast(msg) {
+    toast.textContent = msg; toast.classList.add("show");
+    clearTimeout(timer); timer = setTimeout(() => toast.classList.remove("show"), 2200);
+  }
+  ["copyEmail", "copyEmail2"].forEach(id => {
+    const b = document.getElementById(id);
+    if (!b) return;
+    b.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText("xinglin-yu@outlook.com"); showToast(lang === "zh" ? "✓ 邮箱已复制，等你来信" : "✓ Email copied — talk soon"); }
+      catch { showToast("xinglin-yu@outlook.com"); }
+    });
+  });
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   TERMINAL
+══════════════════════════════════════════════════════════════ */
+(function terminal() {
+  const screen = document.getElementById("termScreen");
+  const boot = document.getElementById("termBoot");
+  const PROMPT = '<span class="t-prompt">➜ ~</span> ';
+  const history = [];
+  let histIdx = -1;
+
+  function line(html, cls = "t-out") {
+    const div = document.createElement("div");
+    div.className = "term-line " + cls;
+    div.innerHTML = html;
+    screen.appendChild(div);
+    screen.scrollTop = screen.scrollHeight;
+    return div;
+  }
+  function cmdEcho(cmd) {
+    line(PROMPT + '<span class="t-cmd">' + escapeHtml(cmd) + "</span>", "");
+  }
+  function escapeHtml(s) { return s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+  const T = {
+    zh: {
+      boot: "欢迎来到 xinglin.dev —— 这里没有客套话。输入 <b>help</b> 开始。",
+      help: [
+        "<b>whoami</b>      我是谁（60 秒版本）",
+        "<b>skills</b>      武器库清单",
+        "<b>journey</b>     职业大事记",
+        "<b>projects</b>    代表作品",
+        "<b>contact</b>     怎么找到我",
+        "<b>coffee</b>      来杯咖啡",
+        "<b>sudo hire-me</b>  你知道该怎么用",
+        "<b>clear</b>       清屏",
+      ],
+      whoami: [
+        "余兴林 / Xinglin Yu",
+        "─────────────────",
+        "全栈工程师，6 年经验，控制理论硕士（论文方向强化学习）。",
+        "前微软：Bing Ads 3.5 年 → Copilot 2 年，服务数百万用户。",
+        "HiTalker 创始人：AI 演讲私教，近万用户，7 人团队。",
+        "现在：训练 Unitree G1 人形机器人跑步，寻找下一段冒险。",
+        "一句话：从像素到机器人，从第一行代码到第一个用户。",
+      ],
+      skills: [
+        "武器库 / ARSENAL",
+        "─────────────────",
+        "◆ Agent    Claude Code · Cursor · Codex · Copilot SDK",
+        "◆ 语言     Python · C# · TypeScript",
+        "◆ 前端     React · Web · 小程序",
+        "◆ 移动端   iOS · Android",
+        "◆ 机器人   MuJoCo · mjlab · ROS · PPO/rsl_rl",
+        "◆ 数据     Spark · PostgreSQL · SQL Server · PB 级实战",
+        "◆ 云       Azure · 阿里云",
+      ],
+      journey: [
+        "2012-16  大连理工 本科+硕士（飞控协会会长，一切的开始）",
+        "2020-21  百度 · 大数据中心节能 20%（强化学习驱动物理世界）",
+        "2021-25  微软 Bing Ads · 守护数十亿次投放（诊断天级→小时级）",
+        "2023-今  HiTalker 创始人 · 近万用户（0→1 全流程）",
+        "2025-26  微软 Copilot · 生成式 UI / Agentic 工作流（百万人用）",
+        "2026-今  具身智能 · 教 G1 跑步（像回家一样）",
+      ],
+      projects: [
+        "🎤 HiTalker       AI 演讲私教 · hitalker.com · 近万用户",
+        "🤖 G1 Locomotion  Unitree G1 速度跟踪 · MuJoCo + PPO",
+        "🛸 四旋翼全栈     PCB→嵌入式→PID/RL 控制 · 百万级项目 ×2",
+        "📋 5 项 AI 专利 · 3 篇论文（1 SCI + 2 EI）",
+      ],
+      contact: [
+        "📧 xinglin-yu@outlook.com（24h 内回复）",
+        "📱 +86 131 6131 0232",
+        "🔗 linkedin.com/in/xinglinyu",
+        "📍 北京 · 可远程",
+      ],
+      coffee: "☕ 冲好了。深度烘焙，不加糖 —— debug 的时候最配。",
+      hireme: [
+        "[sudo] 权限检查…… <span class='t-dim'>通过 ✓</span>",
+        "操作有点不寻常，但我喜欢。",
+        "正在打开邮件客户端…… <span class='t-grad'>xinglin-yu@outlook.com</span>",
+        "祝我们都好运。🤝",
+      ],
+      rmrf: "别闹 :) 这个网站我写了很久的。",
+      exit: "exit？不存在的。这个终端关不掉，就像我对写代码的热情。",
+      unknown: (c) => `zsh: command not found: ${c} —— 试试 <b>help</b>？`,
+    },
+    en: {
+      boot: "Welcome to xinglin.dev — no small talk here. Type <b>help</b> to start.",
+      help: [
+        "<b>whoami</b>      who I am (60-second version)",
+        "<b>skills</b>      my arsenal",
+        "<b>journey</b>     career milestones",
+        "<b>projects</b>    selected work",
+        "<b>contact</b>     how to reach me",
+        "<b>coffee</b>      brew a cup",
+        "<b>sudo hire-me</b>  you know what to do",
+        "<b>clear</b>       wipe the screen",
+      ],
+      whoami: [
+        "Xinglin Yu",
+        "─────────────────",
+        "Full-stack engineer, 6 yrs, M.Sc. Control Theory (RL thesis).",
+        "Ex-Microsoft: Bing Ads 3.5 yrs → Copilot 2 yrs, millions of users.",
+        "HiTalker founder: AI speech coach, ~10K users, 7-person team.",
+        "Now: training Unitree G1 to run — and looking for the next adventure.",
+        "One line: from pixels to robots, from first line of code to first user.",
+      ],
+      skills: [
+        "ARSENAL",
+        "─────────────────",
+        "◆ Agent    Claude Code · Cursor · Codex · Copilot SDK",
+        "◆ Lang     Python · C# · TypeScript",
+        "◆ Frontend React · Web · Mini Program",
+        "◆ Mobile   iOS · Android",
+        "◆ Robotics MuJoCo · mjlab · ROS · PPO/rsl_rl",
+        "◆ Data     Spark · PostgreSQL · SQL Server · PB-scale in prod",
+        "◆ Cloud    Azure · Alibaba Cloud",
+      ],
+      journey: [
+        "2012-16  DUT B.Eng + M.Sc. (flight-control club president — origin story)",
+        "2020-21  Baidu · 20% data-center energy savings (RL driving the physical world)",
+        "2021-25  Microsoft Bing Ads · guarding billions of offers (triage days → hours)",
+        "2023-now HiTalker founder · ~10K users (full 0→1)",
+        "2025-26  Microsoft Copilot · Generative UI / Agentic workflows (millions of users)",
+        "2026-now Embodied AI · teaching G1 to run (feels like home)",
+      ],
+      projects: [
+        "🎤 HiTalker        AI speech coach · hitalker.com · ~10K users",
+        "🤖 G1 Locomotion   Unitree G1 velocity tracking · MuJoCo + PPO",
+        "🛸 Quadrotor stack PCB→firmware→PID/RL control · 2 × ¥1M projects",
+        "📋 5 AI patents · 3 papers (1 SCI + 2 EI)",
+      ],
+      contact: [
+        "📧 xinglin-yu@outlook.com (reply within 24h)",
+        "📱 +86 131 6131 0232",
+        "🔗 linkedin.com/in/xinglinyu",
+        "📍 Beijing · remote-friendly",
+      ],
+      coffee: "☕ Brewed. Dark roast, no sugar — best served with debugging.",
+      hireme: [
+        "[sudo] permission check… <span class='t-dim'>passed ✓</span>",
+        "Unusual operation. I like it.",
+        "Opening mail client… <span class='t-grad'>xinglin-yu@outlook.com</span>",
+        "Good luck to both of us. 🤝",
+      ],
+      rmrf: "Nice try :) I spent a long time building this site.",
+      exit: "exit? Not a chance. This terminal can't be closed — just like my passion for code.",
+      unknown: (c) => `zsh: command not found: ${c} — try <b>help</b>?`,
+    }
+  };
+  let termLang = "zh";
+  window.__setTermLang = (l) => { termLang = l; boot.innerHTML = T[l].boot; };
+
+  boot.innerHTML = T.zh.boot;
+
+  function run(cmdRaw) {
+    const cmd = cmdRaw.trim().toLowerCase();
+    if (!cmd) return;
+    cmdEcho(cmdRaw.trim());
+    const dict = T[termLang];
+    if (cmd === "clear") { screen.querySelectorAll(".term-line:not(:last-child)").forEach(el => el.remove()); boot.innerHTML = ""; return; }
+    if (cmd === "help") { dict.help.forEach(l => line(l)); }
+    else if (cmd === "whoami") { dict.whoami.forEach(l => line(l)); }
+    else if (cmd === "skills") { dict.skills.forEach(l => line(l)); }
+    else if (cmd === "journey" || cmd === "exp") { dict.journey.forEach(l => line(l)); }
+    else if (cmd === "projects" || cmd === "ls") { dict.projects.forEach(l => line(l)); }
+    else if (cmd === "contact" || cmd === "email") { dict.contact.forEach(l => line(l)); }
+    else if (cmd === "coffee") { line(dict.coffee); }
+    else if (cmd === "sudo hire-me" || cmd === "sudo hire me") { dict.hireme.forEach((l, i) => setTimeout(() => line(l), i * 350)); }
+    else if (cmd.startsWith("rm")) { line(dict.rmrf); }
+    else if (cmd === "exit") { line(dict.exit); }
+    else if (cmd === "hi" || cmd === "hello" || cmd === "你好") { line(termLang === "zh" ? "你好呀 👋 欢迎来到我的小站。" : "Hey there 👋 welcome to my site."); }
+    else { line(dict.unknown(escapeHtml(cmdRaw.trim()))); }
+  }
+
+  /* input row */
+  const inputRow = document.createElement("div");
+  inputRow.className = "term-line term-input-row";
+  inputRow.innerHTML = PROMPT + '<input id="termInput" autocomplete="off" spellcheck="false" aria-label="terminal input" />';
+  screen.appendChild(inputRow);
+  const input = document.getElementById("termInput");
+  screen.addEventListener("click", () => input.focus());
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      const v = input.value;
+      if (v.trim()) { history.push(v); histIdx = history.length; }
+      input.value = "";
+      run(v);
+      inputRow.remove(); screen.appendChild(inputRow); input.focus();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (histIdx > 0) { histIdx--; input.value = history[histIdx] || ""; }
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (histIdx < history.length) { histIdx++; input.value = history[histIdx] || ""; }
+    }
+  });
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   WORK VIDEO SLOTS (auto-activate when file exists)
+══════════════════════════════════════════════════════════════ */
+(function workVideos() {
+  document.querySelectorAll(".work-media").forEach(media => {
+    const video = media.querySelector("video");
+    if (!video) return;
+    const activate = () => media.classList.add("has-video");
+    video.addEventListener("loadeddata", activate);
+    video.addEventListener("error", () => media.classList.remove("has-video"));
+    // hover to play (desktop)
+    media.addEventListener("pointerenter", () => {
+      if (media.classList.contains("has-video")) video.play().catch(() => {});
+    });
+    media.addEventListener("pointerleave", () => {
+      if (!video.paused) { video.pause(); video.currentTime = 0; }
+    });
+    // click/tap to toggle (mobile & fallback)
+    video.addEventListener("click", e => {
+      e.preventDefault();
+      video.paused ? video.play().catch(() => {}) : video.pause();
+    });
+  });
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   LIGHTBOX (certificates & photos)
+══════════════════════════════════════════════════════════════ */
+(function lightbox() {
+  const lb = document.getElementById("lightbox");
+  const img = lb.querySelector("img");
+  const cap = lb.querySelector(".lb-cap");
+  document.querySelectorAll("[data-lightbox]").forEach(el => {
+    el.addEventListener("click", () => {
+      img.src = el.dataset.lightbox;
+      cap.textContent = el.dataset.caption || "";
+      lb.classList.add("show");
+    });
+  });
+  lb.addEventListener("click", () => { lb.classList.remove("show"); img.src = ""; });
+  addEventListener("keydown", e => { if (e.key === "Escape" && lb.classList.contains("show")) { lb.classList.remove("show"); img.src = ""; } });
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   BACK TO TOP
+══════════════════════════════════════════════════════════════ */
+(function toTop() {
+  const b = document.getElementById("toTop");
+  addEventListener("scroll", () => b.classList.toggle("show", scrollY > 500), { passive: true });
+  b.addEventListener("click", () => scrollTo({ top: 0, behavior: "smooth" }));
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   LANG TOGGLE
+══════════════════════════════════════════════════════════════ */
+(function i18nToggle() {
+  const btn = document.getElementById("langBtn");
+  btn.addEventListener("click", () => {
+    lang = lang === "zh" ? "en" : "zh";
+    btn.textContent = lang === "zh" ? "EN" : "中文";
+    if (lang === "en") {
+      Object.entries(I18N.en).forEach(([k, v]) => {
+        if (k.startsWith("types")) return;
+        document.querySelectorAll(`[data-i18n="${k}"]`).forEach(el => el.innerHTML = v);
+      });
+      document.documentElement.lang = "en";
+      window.__setTypes(I18N.en.typesEn);
+      window.__setTermLang("en");
+      if (window.__setGreeting) window.__setGreeting();
+    } else {
+      location.reload();
+    }
+  });
+})();
+</script>
+</body>
+</html>
